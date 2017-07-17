@@ -54,4 +54,10 @@ class PaperDatabase(object):
         with open(self.get_doc_path(coll,name),"w+") as f:
             f.write(_j.dumps(doc))
 
+    def list_collection(self):
+        return os.listdir(self.root)
+
+    def list_document(self,coll):
+        l = os.listdir(self.get_coll_path(coll))
+        return map((lambda e: e.split('.',maxsplit=2)[0]), l)
 
