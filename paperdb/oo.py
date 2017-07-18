@@ -46,3 +46,51 @@ class PaperClient(object):
     def get_document(self,name):
         return self.cachemap.get(name)
 
+    def each(self,coll):
+        for n in self.db.list_document(coll):
+            yield self.get_document(self.docname2cname(coll,n))
+
+    def foreach(self,coll,f):
+        for d in self.each(coll):
+            f(d)
+
+    @staticmethod
+    def match_doc(rule,d2):
+        for k in rule:
+            if k not in d2:
+                return False
+            elif rule[k] != d2[k]:
+                return False
+        return True
+
+    def find(self,coll,rule=None,filter_=None,limit=None,skip=None):
+        count = -1
+        if limit:
+            limit = limit -1
+        for d in self.each(coll):
+            count += 1
+            isMatch = False
+            if rule:
+                if self.match_doc(rule,d):
+                    isMatch = True
+                else:
+                    isMatch = False
+            else:
+                isMatch = True
+            if filter_:
+                if filter_(d):
+                    isMatch = isMatch and True
+                else:
+                    isMatch = False
+            if limit:
+                if count > limit:
+                    break
+            if skip:
+                if count <= skip:
+                    isMatch = False
+            if isMatch:
+                yield d
+
+    def find_one(self,*args,**kargs):
+        return self.find(*args,**kargs,limit=1)
+
