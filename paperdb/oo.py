@@ -1,9 +1,10 @@
 
 class CachePool(object):
-    def __init__(self,limit=120,ifnone=None):
+    def __init__(self,limit=120,ifnone=None,sync=True):
         self.limit = limit
         self.pool = {}
         self.ifnone_callback = ifnone
+        self.is_sync = sync
 
     def put(self,k,v):
         count = len(self.pool)
@@ -17,19 +18,27 @@ class CachePool(object):
             if default:
                 return default
             elif self.ifnone_callback:
-                r = self.ifnone_callback(k)
+                r = None
+                if self.is_sync:
+                    r = self.ifnone_callback(k)
+                else:
+                    r = await self.ifnone_callback(k)
                 self.put(k,r)
                 return r
         return r
 
 
 class PaperClient(object):
-    def __init__(self,db,cache_limit=150):
+    def __init__(self,db,cache_limit=150,preload=False,sync=True):
         self.source = db
+        necb = self.no_el_callback if sync else self.no_el_callback_sync
         self.cachemap = CachePool(
                 limit=cache_limit,
-                ifnone=self.no_el_callback
+                ifnone=necb,
+                sync=sync
                 )
+        if preload:
+            self._preload()
 
     @staticmethod
     def cname2docname(name):
@@ -42,6 +51,10 @@ class PaperClient(object):
     def no_el_callback(self,cname):
         coll, doc = self.cname2docname(cname)
         return self.db.read_docment_sync(coll,doc)
+
+    async def no_el_callback_async(self,cname):
+        coll, doc = self.cname2docname(cname)
+        return await self.db.read_document(coll,doc)
 
     def get_document(self,name):
         return self.cachemap.get(name)
@@ -93,4 +106,8 @@ class PaperClient(object):
 
     def find_one(self,*args,**kargs):
         return self.find(*args,**kargs,limit=1)
+
+    def _preload(self):
+        for c in self.db.list_collection():
+            self.foreach(c,(lambda x: x))
 
