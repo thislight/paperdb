@@ -40,7 +40,7 @@ class PaperDatabase(object):
 
     async def read_document(self,coll,name):
         async with _af.open(self.get_doc_path(coll,name)) as f:
-            return _j.loads(f.read())
+            return await _j.loads(f.read())
 
     def read_document_sync(self,coll,name):
         with open(self.get_doc_path(coll,name)) as f:
@@ -48,7 +48,7 @@ class PaperDatabase(object):
 
     async def write_document(self,coll,name,doc):
         async with _af.open(self.get_doc_path(coll,name),"w+") as f:
-            f.write(_j.dumps(doc))
+            await f.write(_j.dumps(doc))
 
     def write_document_sync(self,coll,name,doc):
         with open(self.get_doc_path(coll,name),"w+") as f:
